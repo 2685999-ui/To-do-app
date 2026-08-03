@@ -23,6 +23,12 @@ export default function Home() {
   const [dueDate, setDueDate] = useState("");
   const [topic, setTopic] = useState("");
 
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editTopic, setEditTopic] = useState("");
+
   async function loadTasks() {
     const res = await fetch("/api/tasks");
     const data = await res.json();
@@ -67,7 +73,37 @@ export default function Home() {
     });
     loadTasks();
   }
+  async function unarchiveTask(id: number) {
+  await fetch(`/api/tasks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ archived: false }),
+  });
+  loadTasks();
+}
 
+function startEdit(task: Task) {
+  setEditingId(task.id);
+  setEditTitle(task.title);
+  setEditDescription(task.description);
+  setEditDueDate(task.dueDate.slice(0, 10)); // format for date input
+  setEditTopic(task.topic);
+}
+
+async function saveEdit(id: number) {
+  await fetch(`/api/tasks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: editTitle,
+      description: editDescription,
+      dueDate: editDueDate,
+      topic: editTopic,
+    }),
+  });
+  setEditingId(null);
+  loadTasks();
+}
   function isOverdue(task: Task) {
     return new Date(task.dueDate) < new Date() && task.status !== "Complete";
   }
@@ -83,9 +119,9 @@ export default function Home() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Todo App</h1>
+      <h1 className="text-2xl font-bold mb-6 text-blue-700">Todo App</h1>
 
-      <form onSubmit={handleCreate} className="mb-8 space-y-3 border p-4 rounded-lg">
+      <form onSubmit={handleCreate} className="mb-8 space-y-3 border border-blue-200 p-4 rounded-lg">
         <h2 className="font-semibold">New Task</h2>
         <input
           className="border p-2 w-full rounded"
@@ -148,29 +184,86 @@ export default function Home() {
       <div className="space-y-3">
         {visibleTasks.length === 0 && <p className="text-gray-500">No tasks here.</p>}
         {visibleTasks.map((task) => (
-          <div key={task.id} className="border rounded-lg p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold">
-                  {task.title}
-                  {isOverdue(task) && (
-                    <span className="ml-2 text-red-600 text-sm font-bold">OVERDUE</span>
-                  )}
-                </h3>
-                <p className="text-sm text-gray-600">{task.description}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Topic: {task.topic} · Due: {new Date(task.dueDate).toLocaleDateString()}
-                </p>
-              </div>
-              {!task.archived && (
-                <button
-                  onClick={() => archiveTask(task.id)}
-                  className="text-xs text-gray-500 underline"
-                >
-                  Archive
-                </button>
-              )}
-            </div>
+          <div key={task.id} className="border border-blue-200 rounded-lg p-4">
+            {editingId === task.id ? (
+  <div className="space-y-2">
+    <input
+      className="border p-2 w-full rounded"
+      value={editTitle}
+      onChange={(e) => setEditTitle(e.target.value)}
+    />
+    <textarea
+      className="border p-2 w-full rounded"
+      value={editDescription}
+      onChange={(e) => setEditDescription(e.target.value)}
+    />
+    <input
+      className="border p-2 w-full rounded"
+      type="date"
+      value={editDueDate}
+      onChange={(e) => setEditDueDate(e.target.value)}
+    />
+    <input
+      className="border p-2 w-full rounded"
+      value={editTopic}
+      onChange={(e) => setEditTopic(e.target.value)}
+    />
+    <div className="space-x-2">
+      <button
+        onClick={() => saveEdit(task.id)}
+        className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+      >
+        Save
+      </button>
+      <button
+        onClick={() => setEditingId(null)}
+        className="text-gray-500 text-sm underline"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+) : (
+  <div className="flex justify-between items-start">
+    <div>
+      <h3 className="font-semibold text-blue-900">
+        {task.title}
+        {isOverdue(task) && (
+          <span className="ml-2 text-red-600 text-sm font-bold">OVERDUE</span>
+        )}
+      </h3>
+      <p className="text-sm text-gray-600">{task.description}</p>
+      <p className="text-xs text-gray-500 mt-1">
+        Topic: {task.topic} · Due: {new Date(task.dueDate).toLocaleDateString()}
+      </p>
+    </div>
+    <div className="space-x-2 text-right">
+      {!task.archived && (
+        <button
+          onClick={() => startEdit(task)}
+          className="text-xs text-blue-600 underline"
+        >
+          Edit
+        </button>
+      )}
+      {!task.archived ? (
+        <button
+          onClick={() => archiveTask(task.id)}
+          className="text-xs text-gray-500 underline"
+        >
+          Archive
+        </button>
+      ) : (
+        <button
+          onClick={() => unarchiveTask(task.id)}
+          className="text-xs text-blue-600 underline"
+        >
+          Unarchive
+        </button>
+      )}
+    </div>
+  </div>
+)}
 
             {!task.archived && (
               <select

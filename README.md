@@ -61,6 +61,13 @@ The app will be available at `http://localhost:3000`.
 **Running tests:**
 
 ```bash
+
+
+## AI Usage
+
+This repository makes use of AI code generation using the following tools: Claude-Web[Claude Sonnet 5].
+This repository does not use AI in-line editing tools.
+This repository does not use AI code review.
 npm test
 ```
 

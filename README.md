@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Todo App
 
-## Getting Started
+A local-first todo application built with Next.js, Prisma, and SQLite. Runs entirely on your machine — no accounts, no deployment, no external services.
 
-First, run the development server:
+## Third-Party Code
+
+| Package | Why it was chosen |
+|---|---|
+| `next` | Framework providing both the frontend (React pages) and backend (API routes) in a single project, avoiding the need for a separate server. |
+| `react` / `react-dom` | Required by Next.js to render the UI. |
+| `prisma` | Type-safe ORM that generates a client from a schema file, avoiding hand-written SQL and giving migration tooling. |
+| `@prisma/client` | The generated database client used at runtime to query SQLite. |
+| `@prisma/adapter-better-sqlite3` | Driver adapter required by Prisma 7 to connect to a local SQLite file. |
+| `better-sqlite3` | Fast, synchronous SQLite driver used under the Prisma adapter. |
+| `tailwindcss` | Utility-first CSS used for styling the UI without writing a separate stylesheet per component. |
+| `vitest` | Test runner used to write and execute the automated tests, chosen for its speed and native TypeScript support. |
+| `dotenv` | Loads environment variables (the database connection string) from `.env` files. |
+
+## Database Design
+
+The application uses a single SQLite database with one table, `Task`:
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | Int (autoincrement) | Primary key |
+| `title` | String | Required |
+| `description` | String | |
+| `dueDate` | DateTime | Required |
+| `topic` | String | Required |
+| `status` | String | One of `"Todo"`, `"In-Progress"`, `"Complete"`; defaults to `"Todo"` |
+| `archived` | Boolean | Defaults to `false`. Archiving a task sets this flag rather than deleting the row, so archived tasks remain viewable. |
+| `createdAt` | DateTime | Set automatically on creation |
+
+**Design decisions:**
+- A single table is used because Topic and Status are simple attributes of a task, not independent entities with their own behaviour or relationships.
+- Archiving is implemented as a boolean flag on the task itself (not a separate table or row deletion), so an archived task's full history and data remain intact and queryable.
+- "Overdue" is **not** stored as a column or status. It is calculated at read time by comparing `dueDate` against the current date, and only applies when `status` is not `"Complete"`. This keeps the overdue state always accurate, even if the app is closed for a long time before being reopened.
+
+## Running It
+
+**Requires:** Node.js v24.18.1 (or any recent LTS version).
+
+From a clean clone:
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Generate the Prisma client
+npx prisma generate
+
+# 3. Create the database and apply the schema
+npx prisma migrate dev --name init
+
+# 4. Start the application
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Running tests:**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+## AI Usage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This repository makes use of AI code generation using the following tools: Claude-Web[Claude Sonnet 5].
+This repository does not use AI in-line editing tools.
+This repository does not use AI code review.
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Tests run against a separate, throwaway SQLite database (`prisma/test.db`), which is created fresh and deleted automatically after each test run. Your real data in `prisma/dev.db` is never touched by the tests.
